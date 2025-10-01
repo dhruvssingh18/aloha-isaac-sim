@@ -1,0 +1,38 @@
+# Minimal PPO training script for ALOHA (No ROS)
+# Save as: train.py
+
+import torch
+from omni.isaac.lab.envs import RLTaskEnv
+from aloha_task_cfg import AlohaBimanualCfg
+from omni.isaac.lab.rl import PPOTrainer
+import torch.nn as nn
+
+# CNN encoder for images
+class CNNEncoder(nn.Module):
+    def __init__(self, in_channels=3, out_dim=64):
+        super().__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(in_channels, 16, 3, stride=2), nn.ReLU(),
+            nn.Conv2d(16, 32, 3, stride=2), nn.ReLU(),
+            nn.Conv2d(32, 64, 3, stride=2), nn.ReLU(),
+        )
+        self.fc = nn.Linear(64*6*6, out_dim)  # adjust size to your camera resolution
+
+    def forward(self, x):
+        # Expect input [B, C, H, W]
+        h = self.conv(x)
+        h = h.view(h.size(0), -1)
+        return self.fc(h)
+
+def main():
+    cfg = AlohaBimanualCfg()
+    env = RLTaskEnv(cfg)
+
+    # Wrap CNN encoder for vision
+    encoder = CNNEncoder()
+    trainer = PPOTrainer(env, encoder=encoder)
+
+    trainer.train(num_iterations=10000)
+
+if __name__ == "__main__":
+    main()

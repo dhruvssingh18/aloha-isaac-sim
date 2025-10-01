@@ -1,0 +1,87 @@
+# Minimal Isaac Lab RL Task Config for ALOHA (No ROS)
+# Save as: aloha_task_cfg.py
+
+from omni.isaac.lab.envs import RLTaskEnvCfg
+from omni.isaac.lab.assets import ArticulationCfg, AssetBaseCfg
+from omni.isaac.lab.actions import ActionTermCfg
+from omni.isaac.lab.rewards import RewardTermCfg
+from omni.isaac.lab.terminations import TerminationCfg
+from omni.isaac.lab.sensors import CameraCfg
+from omni.isaac.lab.scene import SceneEntityCfg
+from omni.isaac.lab.rl import PPOCfg
+
+class AlohaBimanualCfg(RLTaskEnvCfg):
+    # Robot assets
+    left_arm = ArticulationCfg(
+        usd_path="usd/aloha_left.usd", prim_path="/World/LeftArm"
+    )
+    right_arm = ArticulationCfg(
+        usd_path="usd/aloha_right.usd", prim_path="/World/RightArm"
+    )
+    table = AssetBaseCfg(
+        usd_path="usd/table.usd", prim_path="/World/Table"
+    )
+
+    # Actions: joint position deltas for each arm
+    actions = dict(
+        left=ActionTermCfg(
+            func="omni.isaac.lab.actions.joint_position_delta",
+            params={"asset_cfg": SceneEntityCfg("left_arm"), "scale": 0.05, "clip": 0.2},
+        ),
+        right=ActionTermCfg(
+            func="omni.isaac.lab.actions.joint_position_delta",
+            params={"asset_cfg": SceneEntityCfg("right_arm"), "scale": 0.05, "clip": 0.2},
+        ),
+    )
+
+    # Cameras (overhead + wrist)
+    cameras = dict(
+        overhead=CameraCfg(
+            prim_path="/World/OverheadCam",
+            width=64, height=64, fov=90,
+            position=(0.0, 0.5, 1.0),
+            orientation=(0.0, 0.0, -1.0, 1.0),
+            rgb=True, depth=False
+        ),
+        wrist_left=CameraCfg(
+            prim_path="/World/LeftArm/wrist_cam",
+            width=64, height=64, fov=90,
+            attach_to="LeftArm/wrist_link",
+            rgb=True, depth=False
+        ),
+    )
+
+    # Observations (state + images)
+    observations = dict(
+        proprio=[
+            "left_arm.q", "left_arm.qd",
+            "right_arm.q", "right_arm.qd",
+        ],
+        vision=[
+            "cameras.overhead.rgb",
+            "cameras.wrist_left.rgb",
+        ],
+        task=["goal_pose", "object_state"],
+    )
+
+    # Rewards (simple reaching + penalty)
+    rewards = [
+        RewardTermCfg("reach_left", "reaching_position_l2",
+                      params={"eef":"left_arm.eef","goal":"goal_left"}, weight=-1.0),
+        RewardTermCfg("reach_right","reaching_position_l2",
+                      params={"eef":"right_arm.eef","goal":"goal_right"}, weight=-1.0),
+        RewardTermCfg("action_pen", "action_l2", weight=-1e-3),
+    ]
+
+    # Terminations
+    terminations = [
+        TerminationCfg("success", "object_height_and_stability",
+                       params={"z":0.10,"steps":30}),
+        TerminationCfg("bad", "unsafe_or_limits"),
+    ]
+
+    # PPO hyperparameters
+    algo = PPOCfg(
+        horizon=1024, gamma=0.99, lam=0.95,
+        lr=3e-4, clip=0.2, num_envs=256
+    )
