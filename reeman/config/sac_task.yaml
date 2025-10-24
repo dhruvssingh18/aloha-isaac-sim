@@ -1,0 +1,22 @@
+task:
+  num_envs: 64
+  time_limit: 500
+  randomization:
+    friction: [0.6, 1.4]
+    mass_scale: [0.8, 1.2]
+    sensor_noise: 0.02
+
+sac:
+  learning_rate: 1e-4
+  gamma: 0.99
+  tau: 0.005               # Target smoothing
+  buffer_size: 1_000_000   # Replay buffer size
+  batch_size: 256
+  alpha: 0.2               # Entropy coefficient (exploration)
+  automatic_entropy_tuning: true
+  target_update_interval: 1
+  policy_update_delay: 1   # Can be >1 for stability
+
+train:
+  max_steps: 2_000_000     # SAC usually trains longer
+  save_interval: 20_000

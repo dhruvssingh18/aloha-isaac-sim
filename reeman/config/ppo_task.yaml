@@ -1,0 +1,21 @@
+task:
+  num_envs: 64
+  time_limit: 500
+  randomization:
+    friction: [0.6, 1.4]
+    mass_scale: [0.8, 1.2]
+    sensor_noise: 0.02
+
+ppo:
+  learning_rate: 3e-4
+  gamma: 0.99
+  lam: 0.95
+  clip_range: 0.2
+  n_steps: 1024
+  batch_size: 256
+  ent_coef: 0.01
+  vf_coef: 0.5
+
+train:
+  max_steps: 1_000_000
+  save_interval: 10_000
